@@ -4,6 +4,7 @@
 # Elimina el enrutamiento entre dos VLANs.
 #
 # Uso: sudo ./no_routing_networks.sh <vlan_id_1> <vlan_id_2>
+# Ej:  ssh ubuntu@10.0.10.3 'sudo bash -s' < ./no_routing_networks.sh 100 200
 #===============================================================================
 set -euo pipefail
 
@@ -20,13 +21,16 @@ RULE_AB=(FORWARD -i "$IF_A" -o "$IF_B" -j ACCEPT)
 RULE_BA=(FORWARD -i "$IF_B" -o "$IF_A" -j ACCEPT)
 
 removed=0
-for rule in RULE_AB RULE_BA; do
-    declare -n r="$rule"
-    if iptables -C "${r[@]}" 2>/dev/null; then
-        iptables -D "${r[@]}"
-        (( removed++ ))
-    fi
-done
+
+if iptables -C "${RULE_AB[@]}" 2>/dev/null; then
+    iptables -D "${RULE_AB[@]}"
+    (( removed++ )) || true
+fi
+
+if iptables -C "${RULE_BA[@]}" 2>/dev/null; then
+    iptables -D "${RULE_BA[@]}"
+    (( removed++ )) || true
+fi
 
 if (( removed > 0 )); then
     echo "[OK] Enrutamiento eliminado entre VLAN $VLAN_A y VLAN $VLAN_B ($removed reglas)."
