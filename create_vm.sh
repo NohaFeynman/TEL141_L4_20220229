@@ -22,8 +22,8 @@ BRIDGE="$2"
 VLAN_ID="$3"
 VNC_PORT="$4"
 
-TAP_IF="tap-${VM_NAME}"
-VM_DISK="${IMG_DIR}/${VM_NAME}.qcow2"
+TAP_IF="${VM_NAME}_tap"
+VM_DISK="${IMG_DIR}/${VM_NAME}_img.qcow2"
 
 [[ "$VLAN_ID" =~ ^[0-9]+$ ]] && (( VLAN_ID >= 1 && VLAN_ID <= 4094 )) \
     || { echo "Error: VLAN ID invalido: '$VLAN_ID'." >&2; exit 1; }
@@ -31,7 +31,7 @@ VM_DISK="${IMG_DIR}/${VM_NAME}.qcow2"
     || { echo "Error: puerto VNC invalido: '$VNC_PORT'." >&2; exit 1; }
 
 ovs-vsctl br-exists "$BRIDGE" \
-    || { echo "Error: el bridge '$BRIDGE' no existe." >&2; exit 1; }
+    || { echo "Error: el bridge '$BRIDGE' no existe. Ejecute init_worker.sh." >&2; exit 1; }
 
 pgrep -f "guest=${VM_NAME}," &>/dev/null \
     && { echo "Error: la VM '$VM_NAME' ya esta en ejecucion." >&2; exit 1; }
@@ -41,7 +41,7 @@ if [[ -f "$BASE_IMG" ]]; then
     echo "[OK] Imagen base ya disponible: $BASE_IMG"
 else
     echo "[INFO] Imagen base no encontrada. Descargando..."
-    wget -q --show-progress -O "$BASE_IMG" "$BASE_URL" \
+    wget -q -O "$BASE_IMG" "$BASE_URL" \
         || { echo "Error: fallo la descarga de la imagen base." >&2; rm -f "$BASE_IMG"; exit 1; }
     echo "[OK] Imagen base descargada: $BASE_IMG"
 fi
@@ -50,14 +50,14 @@ fi
 if [[ -f "$VM_DISK" ]]; then
     echo "[INFO] El disco '$VM_DISK' ya existe. Se reutiliza."
 else
-    qemu-img create -f qcow2 -F qcow2 -b "$BASE_IMG" "$VM_DISK" >/dev/null
+    qemu-img create -f qcow2 -b "$BASE_IMG" -F qcow2 "$VM_DISK" >/dev/null
     echo "[OK] Disco COW creado: $VM_DISK (backing file: $BASE_IMG)"
 fi
 
 #--- 3. Interfaz TAP conectada al OVS con el tag de VLAN ---------------------
-ip tuntap add mode tap name "$TAP_IF" 2>/dev/null || true
-ip link set "$TAP_IF" up
+ip link show "$TAP_IF" &>/dev/null || ip tuntap add mode tap name "$TAP_IF"
 ovs-vsctl --may-exist add-port "$BRIDGE" "$TAP_IF" tag="$VLAN_ID"
+ip link set dev "$TAP_IF" up
 echo "[OK] Interfaz TAP '$TAP_IF' conectada a '$BRIDGE' con tag $VLAN_ID."
 
 #--- 4. Direccion MAC derivada de la VLAN y del puerto VNC -------------------
@@ -68,12 +68,11 @@ qemu-system-x86_64 \
     -name "guest=${VM_NAME},debug-threads=on" \
     -enable-kvm \
     -m "$VM_RAM" \
-    -nographic \
     -vnc "0.0.0.0:${VNC_PORT}" \
-    -drive file="$VM_DISK",format=qcow2 \
-    -netdev tap,id=net0,ifname="$TAP_IF",script=no,downscript=no \
-    -device e1000,netdev=net0,mac="$MAC" \
-    -daemonize
+    -netdev tap,id=tap1,ifname="$TAP_IF",script=no,downscript=no \
+    -device e1000,netdev=tap1,mac="$MAC" \
+    -daemonize \
+    "$VM_DISK"
 
 echo "[OK] VM '$VM_NAME' iniciada."
 echo "[INFO] MAC: $MAC | VNC: puerto $(( 5900 + VNC_PORT )) | VLAN: $VLAN_ID"

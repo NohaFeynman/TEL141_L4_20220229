@@ -19,8 +19,8 @@ BRIDGE="$2"
 VLAN_ID="$3"
 VNC_PORT="$4"
 
-TAP_IF="tap-${VM_NAME}"
-VM_DISK="${IMG_DIR}/${VM_NAME}.qcow2"
+TAP_IF="${VM_NAME}_tap"
+VM_DISK="${IMG_DIR}/${VM_NAME}_img.qcow2"
 
 #--- 1. Detener el proceso QEMU ----------------------------------------------
 PIDS=$(pgrep -f "guest=${VM_NAME}," || true)
@@ -63,7 +63,7 @@ BASE_REAL=$(readlink -f "$BASE_IMG")
 deltas=0
 
 shopt -s nullglob
-for disk in "${IMG_DIR}"/*.qcow2; do
+for disk in "${IMG_DIR}"/*_img.qcow2; do
     [[ "$(readlink -f "$disk")" == "$BASE_REAL" ]] && continue
     backing=$(qemu-img info --output=json "$disk" 2>/dev/null \
               | grep -o '"backing-filename": *"[^"]*"' \
