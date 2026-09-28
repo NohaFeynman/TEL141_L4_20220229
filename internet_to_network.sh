@@ -24,8 +24,8 @@ ip link show "$GW_IF" &>/dev/null \
     || { echo "Error: la interfaz '$GW_IF' no existe. Ejecute create_network_vlan.sh." >&2; exit 1; }
 
 #--- 1. NAT de salida: enmascarar el origen con la IP de la interfaz WAN -----
-NAT_RULE=(-t nat POSTROUTING -s "$CIDR" -o "$WAN_IF" -j MASQUERADE)
-iptables -C "${NAT_RULE[@]}" 2>/dev/null || iptables -A "${NAT_RULE[@]}"
+NAT_RULE=(POSTROUTING -s "$CIDR" -o "$WAN_IF" -j MASQUERADE)
+iptables -t nat -C "${NAT_RULE[@]}" 2>/dev/null || iptables -t nat -A "${NAT_RULE[@]}"
 echo "[OK] MASQUERADE activo para $CIDR por '$WAN_IF'."
 
 #--- 2. Autorizar el reenvio de salida y el retorno de conexiones establecidas

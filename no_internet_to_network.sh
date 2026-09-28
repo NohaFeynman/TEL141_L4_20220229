@@ -20,12 +20,12 @@ GW_IF="gw_vlan${VLAN_ID}"
     || { echo "Error: CIDR invalido: '$CIDR'." >&2; exit 1; }
 
 #--- Las especificaciones replican exactamente las de internet_to_network.sh -
-NAT_RULE=(-t nat POSTROUTING -s "$CIDR" -o "$WAN_IF" -j MASQUERADE)
+NAT_RULE=(POSTROUTING -s "$CIDR" -o "$WAN_IF" -j MASQUERADE)
 FWD_OUT=(FORWARD -i "$GW_IF" -o "$WAN_IF" -j ACCEPT)
 FWD_IN=(FORWARD -i "$WAN_IF" -o "$GW_IF" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT)
 
-if iptables -C "${NAT_RULE[@]}" 2>/dev/null; then
-    iptables -D "${NAT_RULE[@]}"
+if iptables -t nat -C "${NAT_RULE[@]}" 2>/dev/null; then
+    iptables -t nat -D "${NAT_RULE[@]}"
     echo "[OK] MASQUERADE eliminado para $CIDR."
 else
     echo "[INFO] No existia regla MASQUERADE para $CIDR."
