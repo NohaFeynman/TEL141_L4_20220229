@@ -4,6 +4,7 @@
 # Elimina la salida a internet de una VLAN.
 #
 # Uso: sudo ./no_internet_to_network.sh <vlan_id> <cidr>
+# Ej:  ssh ubuntu@10.0.10.3 'sudo bash -s' < ./no_internet_to_network.sh 100 192.168.0.0/24
 #===============================================================================
 set -euo pipefail
 
@@ -31,12 +32,13 @@ else
     echo "[INFO] No existia regla MASQUERADE para $CIDR."
 fi
 
-for rule in FWD_OUT FWD_IN; do
-    declare -n r="$rule"
-    if iptables -C "${r[@]}" 2>/dev/null; then
-        iptables -D "${r[@]}"
-    fi
-done
-echo "[OK] Reglas de reenvio hacia '$WAN_IF' eliminadas para la VLAN $VLAN_ID."
+if iptables -C "${FWD_OUT[@]}" 2>/dev/null; then
+    iptables -D "${FWD_OUT[@]}"
+fi
 
+if iptables -C "${FWD_IN[@]}" 2>/dev/null; then
+    iptables -D "${FWD_IN[@]}"
+fi
+
+echo "[OK] Reglas de reenvio hacia '$WAN_IF' eliminadas para la VLAN $VLAN_ID."
 echo "[INFO] Salida a internet deshabilitada para la VLAN $VLAN_ID."
