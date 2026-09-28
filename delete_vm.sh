@@ -27,7 +27,10 @@ PIDS=$(pgrep -f "guest=${VM_NAME}," || true)
 if [[ -n "$PIDS" ]]; then
     kill $PIDS
     sleep 1
-    pgrep -f "guest=${VM_NAME}," &>/dev/null && kill -9 $PIDS 2>/dev/null || true
+    if pgrep -f "guest=${VM_NAME}," &>/dev/null; then
+        kill -9 $PIDS 2>/dev/null || true
+        sleep 1
+    fi
     echo "[OK] Proceso de la VM '$VM_NAME' detenido."
 else
     echo "[INFO] La VM '$VM_NAME' no estaba en ejecucion."
@@ -65,12 +68,21 @@ deltas=0
 shopt -s nullglob
 for disk in "${IMG_DIR}"/*_img.qcow2; do
     [[ "$(readlink -f "$disk")" == "$BASE_REAL" ]] && continue
-    backing=$(qemu-img info --output=json "$disk" 2>/dev/null \
+
+    # -U permite leer metadatos de discos en uso por QEMU (solo lectura)
+    info=$(qemu-img info -U --output=json "$disk" 2>/dev/null) || {
+        echo "[WARN] No se pudo inspeccionar '$disk'. La imagen base se conserva por seguridad." >&2
+        deltas=$(( deltas + 1 ))
+        continue
+    }
+
+    backing=$(echo "$info" \
               | grep -o '"backing-filename": *"[^"]*"' \
-              | sed 's/.*"backing-filename": *"\([^"]*\)".*/\1/') || true
+              | sed 's/.*"backing-filename": *"\([^"]*\)".*/\1/')
     [[ -z "$backing" ]] && continue
+
     if [[ "$(readlink -f "$backing")" == "$BASE_REAL" ]]; then
-        (( deltas++ )) || true
+        deltas=$(( deltas + 1 ))
     fi
 done
 shopt -u nullglob
