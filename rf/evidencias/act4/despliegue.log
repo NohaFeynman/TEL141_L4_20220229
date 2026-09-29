@@ -1,0 +1,115 @@
+############ ACTIVIDAD 4: ENRUTAMIENTO ENTRE REDES AISLADAS ############
+
+===== 1. Inicializacion de nodos =====
+>>> [10.0.10.3] init_master.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[OK] IPv4 forwarding activado (persistente en /etc/sysctl.d/99-tel141.conf).
+[OK] Cadena FORWARD de la tabla filter en politica DROP.
+[INFO] Nodo master inicializado: server3
+
+>>> [10.0.10.1] init_worker.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[INFO] Nodo worker inicializado: server1
+
+>>> [10.0.10.2] init_worker.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[INFO] Nodo worker inicializado: server2
+
+===== 2. Redes VLAN con DHCP (master) =====
+>>> [10.0.10.3] create_network_vlan.sh 100 192.168.0.0/24 enabled 192.168.0.10,192.168.0.100
+[INFO] VLAN 100 | red 192.168.0.0/24 | mascara 255.255.255.0
+[INFO] Gateway: 192.168.0.1  |  DHCP: enabled
+[OK] Interfaz 'gw_vlan100' creada con tag 100 y direccion 192.168.0.1/24.
+[OK] Namespace 'ns-dhcp-vlan100' disponible.
+[OK] Interfaz 'dhcp_vlan100' en 'ns-dhcp-vlan100' con direccion 192.168.0.2/24.
+[OK] dnsmasq activo en 'ns-dhcp-vlan100': rango 192.168.0.10-192.168.0.100, gateway 192.168.0.1.
+[INFO] Red VLAN 100 creada en server3.
+
+>>> [10.0.10.3] create_network_vlan.sh 200 192.168.2.0/24 enabled 192.168.2.10,192.168.2.100
+[INFO] VLAN 200 | red 192.168.2.0/24 | mascara 255.255.255.0
+[INFO] Gateway: 192.168.2.1  |  DHCP: enabled
+[OK] Interfaz 'gw_vlan200' creada con tag 200 y direccion 192.168.2.1/24.
+[OK] Namespace 'ns-dhcp-vlan200' disponible.
+[OK] Interfaz 'dhcp_vlan200' en 'ns-dhcp-vlan200' con direccion 192.168.2.2/24.
+[OK] dnsmasq activo en 'ns-dhcp-vlan200': rango 192.168.2.10-192.168.2.100, gateway 192.168.2.1.
+[INFO] Red VLAN 200 creada en server3.
+
+===== 3. Sin salida a internet: se garantiza la ausencia de reglas NAT =====
+>>> [10.0.10.3] no_internet_to_network.sh 100 192.168.0.0/24
+[INFO] No existia regla MASQUERADE para 192.168.0.0/24.
+[OK] Reglas de reenvio hacia 'ens3' eliminadas para la VLAN 100.
+[INFO] Salida a internet deshabilitada para la VLAN 100.
+
+>>> [10.0.10.3] no_internet_to_network.sh 200 192.168.2.0/24
+[INFO] No existia regla MASQUERADE para 192.168.2.0/24.
+[OK] Reglas de reenvio hacia 'ens3' eliminadas para la VLAN 200.
+[INFO] Salida a internet deshabilitada para la VLAN 200.
+
+===== 4. Maquinas virtuales (server2) =====
+>>> [10.0.10.2] create_vm.sh vm100 br-int 100 1
+[INFO] Imagen base no encontrada. Descargando...
+[OK] Imagen base descargada: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
+[OK] Disco COW creado: /home/ubuntu/vm100_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
+[OK] Interfaz TAP 'vm100_tap' conectada a 'br-int' con tag 100.
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
+[OK] VM 'vm100' iniciada.
+[INFO] MAC: 20:22:02:29:64:01 | VNC: puerto 5901 | VLAN: 100
+
+>>> [10.0.10.2] create_vm.sh vm200 br-int 200 2
+[OK] Imagen base ya disponible: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
+[OK] Disco COW creado: /home/ubuntu/vm200_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
+[OK] Interfaz TAP 'vm200_tap' conectada a 'br-int' con tag 200.
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
+[OK] VM 'vm200' iniciada.
+[INFO] MAC: 20:22:02:29:c8:02 | VNC: puerto 5902 | VLAN: 200
+
+===== 5. Contenedores (server1) =====
+>>> [10.0.10.1] create_container.sh c100 br-int 100
+[OK] Contenedor 'c100' creado (sin red Docker).
+[OK] Par veth conectado: 'veth_c100' (tag 100) <-> 'eth_c100' en el contenedor.
+udhcpc: lease of 192.168.0.84 obtained from 192.168.0.2, lease time 43200
+mv: can't rename '/etc/resolv.conf.14': Resource busy
+[OK] Contenedor 'c100' conectado a la VLAN 100.
+26: eth_c100@if27: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
+    link/ether 72:49:23:43:a6:c1 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.84/24 brd 192.168.0.255 scope global eth_c100
+       valid_lft forever preferred_lft forever
+    inet6 fe80::7049:23ff:fe43:a6c1/64 scope link 
+       valid_lft forever preferred_lft forever
+
+>>> [10.0.10.1] create_container.sh c200 br-int 200
+[OK] Contenedor 'c200' creado (sin red Docker).
+[OK] Par veth conectado: 'veth_c200' (tag 200) <-> 'eth_c200' en el contenedor.
+udhcpc: lease of 192.168.2.56 obtained from 192.168.2.2, lease time 43200
+mv: can't rename '/etc/resolv.conf.16': Resource busy
+[OK] Contenedor 'c200' conectado a la VLAN 200.
+28: eth_c200@if29: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
+    link/ether fa:66:ae:bf:d3:66 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.56/24 brd 192.168.2.255 scope global eth_c200
+       valid_lft forever preferred_lft forever
+    inet6 fe80::f866:aeff:febf:d366/64 scope link 
+       valid_lft forever preferred_lft forever
+
+===== 6. Estado previo: sin enrutamiento entre VLANs =====
+>>> [10.0.10.3] no_routing_networks.sh 100 200
+[INFO] No existian reglas de enrutamiento entre VLAN 100 y VLAN 200.
+
+--- Prueba de conectividad ANTES de habilitar el enrutamiento ---
+Direccion de c200: 192.168.2.56
+PING 192.168.2.56 (192.168.2.56): 56 data bytes
+
+--- 192.168.2.56 ping statistics ---
+2 packets transmitted, 0 packets received, 100% packet loss
+>>> CORRECTO: sin respuesta. La politica FORWARD DROP descarta el trafico.
+
+===== 7. Habilitacion del enrutamiento entre VLANs (master) =====
+>>> [10.0.10.3] routing_networks.sh 100 200
+[OK] Enrutamiento habilitado entre VLAN 100 y VLAN 200.
+
+############ DESPLIEGUE COMPLETADO ############
+
+NOTA: cirros obtiene direccionamiento por DHCP automaticamente al arrancar.
+      Consolas VNC disponibles en los puertos 5901 (vm100) y 5902 (vm200).
