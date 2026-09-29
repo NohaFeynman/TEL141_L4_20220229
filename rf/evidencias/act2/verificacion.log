@@ -1,0 +1,149 @@
+############ VERIFICACION - ACTIVIDAD 2 ############
+Fecha: Tue Sep 29 02:20:45 UTC 2026
+
+----- Master (server3): topologia OVS -----
+server3
+6f0eb54f-2ce9-4b85-8110-2a5df45533bc
+    Bridge br-int
+        Port br-int
+            Interface br-int
+                type: internal
+        Port gw_vlan200
+            tag: 200
+            Interface gw_vlan200
+                type: internal
+        Port gw_vlan100
+            tag: 100
+            Interface gw_vlan100
+                type: internal
+        Port ens4
+            Interface ens4
+    ovs_version: "2.13.8"
+
+----- Master: ausencia de servicio DHCP (esperado: sin namespaces, 0 procesos) -----
+Procesos DHCP activos: 0
+
+----- Master: direcciones de los gateways -----
+gw_vlan100       UNKNOWN        192.168.0.1/24 fe80::4e7:7ff:fee7:e873/64 
+gw_vlan200       UNKNOWN        192.168.2.1/24 fe80::3472:48ff:fe65:7801/64 
+
+----- Master: reglas de filtrado y NAT -----
+-P FORWARD DROP
+-A FORWARD -i gw_vlan100 -o ens3 -j ACCEPT
+-A FORWARD -i ens3 -o gw_vlan100 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i gw_vlan200 -o ens3 -j ACCEPT
+-A FORWARD -i ens3 -o gw_vlan200 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+-P POSTROUTING ACCEPT
+-A POSTROUTING -s 192.168.0.0/24 -o ens3 -j MASQUERADE
+-A POSTROUTING -s 192.168.2.0/24 -o ens3 -j MASQUERADE
+
+----- Worker server2: topologia OVS y maquinas virtuales -----
+server2
+baa8600b-8220-4764-b51b-edaab6f6ac5d
+    Bridge br-int
+        Port vm200_tap
+            tag: 200
+            Interface vm200_tap
+        Port ens4
+            Interface ens4
+        Port br-int
+            Interface br-int
+                type: internal
+        Port vm100_tap
+            tag: 100
+            Interface vm100_tap
+    ovs_version: "2.13.8"
+354018 qemu-system-x86_64 -name guest=vm100,debug-threads=on -enable-kvm -m 128 -vnc 0.0.0.0:1 -netd
+354129 qemu-system-x86_64 -name guest=vm200,debug-threads=on -enable-kvm -m 128 -vnc 0.0.0.0:2 -netd
+354595 bash -c hostname; sudo ovs-vsctl show; pgrep -af qemu-system | cut -c1-100
+
+----- Worker server1: topologia OVS y contenedores -----
+server1
+44a77839-8a54-43e0-8ad6-4ccb8b9827e5
+    Bridge br-int
+        Port br-int
+            Interface br-int
+                type: internal
+        Port veth_c100
+            tag: 100
+            Interface veth_c100
+        Port veth_c200
+            tag: 200
+            Interface veth_c200
+        Port ens4
+            Interface ens4
+    ovs_version: "2.13.8"
+c200 Up 9 minutes
+c100 Up 9 minutes
+
+----- Contenedor c100 (VLAN 100): direccionamiento estatico -----
+18: eth_c100@if19: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
+    link/ether 6a:b0:d7:6c:a1:d4 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.11/24 scope global eth_c100
+       valid_lft forever preferred_lft forever
+    inet6 fe80::68b0:d7ff:fe6c:a1d4/64 scope link 
+       valid_lft forever preferred_lft forever
+default via 192.168.0.1 dev eth_c100 
+192.168.0.0/24 dev eth_c100 scope link  src 192.168.0.11 
+
+----- Contenedor c200 (VLAN 200): direccionamiento estatico -----
+20: eth_c200@if21: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
+    link/ether 1a:c9:f2:4c:7a:a5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.11/24 scope global eth_c200
+       valid_lft forever preferred_lft forever
+    inet6 fe80::18c9:f2ff:fe4c:7aa5/64 scope link 
+       valid_lft forever preferred_lft forever
+default via 192.168.2.1 dev eth_c200 
+192.168.2.0/24 dev eth_c200 scope link  src 192.168.2.11 
+
+----- c100 -> gateway VLAN 100 (esperado: exito) -----
+PING 192.168.0.1 (192.168.0.1): 56 data bytes
+64 bytes from 192.168.0.1: seq=0 ttl=64 time=4.058 ms
+64 bytes from 192.168.0.1: seq=1 ttl=64 time=0.967 ms
+
+--- 192.168.0.1 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.967/2.512/4.058 ms
+
+----- c100 -> internet (esperado: exito) -----
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+64 bytes from 8.8.8.8: seq=0 ttl=110 time=37.843 ms
+64 bytes from 8.8.8.8: seq=1 ttl=110 time=36.827 ms
+
+--- 8.8.8.8 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 36.827/37.335/37.843 ms
+
+----- c200 -> gateway VLAN 200 (esperado: exito) -----
+PING 192.168.2.1 (192.168.2.1): 56 data bytes
+64 bytes from 192.168.2.1: seq=0 ttl=64 time=4.280 ms
+64 bytes from 192.168.2.1: seq=1 ttl=64 time=0.916 ms
+
+--- 192.168.2.1 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.916/2.598/4.280 ms
+
+----- c200 -> internet (esperado: exito) -----
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+64 bytes from 8.8.8.8: seq=0 ttl=110 time=41.618 ms
+64 bytes from 8.8.8.8: seq=1 ttl=110 time=35.880 ms
+
+--- 8.8.8.8 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 35.880/38.749/41.618 ms
+
+----- Aislamiento entre VLANs: c100 -> c200 (esperado: SIN respuesta) -----
+PING 192.168.2.11 (192.168.2.11): 56 data bytes
+
+--- 192.168.2.11 ping statistics ---
+2 packets transmitted, 0 packets received, 100% packet loss
+>>> CORRECTO: sin respuesta. La trama de c100 sale etiquetada con VLAN 100
+    y el bridge no la entrega a puertos de VLAN 200: aislamiento de capa 2.
+
+----- Nota sobre la direccion 192.168.2.1 -----
+El gateway de la VLAN 200 responde a c100 porque gw_vlan100 y gw_vlan200
+pertenecen al mismo host (server3): el trafico dirigido a una direccion local
+atraviesa la cadena INPUT, no FORWARD. No constituye comunicacion entre VLANs.
+
+############ FIN DE LA VERIFICACION ############

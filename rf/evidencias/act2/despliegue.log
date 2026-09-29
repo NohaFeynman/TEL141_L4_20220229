@@ -1,0 +1,100 @@
+############ ACTIVIDAD 2: REDES AISLADAS SIN DHCP Y SALIDA A INTERNET ############
+
+===== 1. Inicializacion de nodos =====
+>>> [10.0.10.3] init_master.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[OK] IPv4 forwarding activado (persistente en /etc/sysctl.d/99-tel141.conf).
+[OK] Cadena FORWARD de la tabla filter en politica DROP.
+[INFO] Nodo master inicializado: server3
+
+>>> [10.0.10.1] init_worker.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[INFO] Nodo worker inicializado: server1
+
+>>> [10.0.10.2] init_worker.sh ens4
+[OK] Bridge OVS 'br-int' disponible.
+[OK] Interfaz 'ens4' conectada a 'br-int'.
+[INFO] Nodo worker inicializado: server2
+
+===== 2. Redes VLAN sin DHCP (master) =====
+>>> [10.0.10.3] create_network_vlan.sh 100 192.168.0.0/24 disabled
+[INFO] VLAN 100 | red 192.168.0.0/24 | mascara 255.255.255.0
+[INFO] Gateway: 192.168.0.1  |  DHCP: disabled
+[OK] Interfaz 'gw_vlan100' creada con tag 100 y direccion 192.168.0.1/24.
+[INFO] DHCP deshabilitado para la VLAN 100.
+[INFO] Red VLAN 100 creada en server3.
+
+>>> [10.0.10.3] create_network_vlan.sh 200 192.168.2.0/24 disabled
+[INFO] VLAN 200 | red 192.168.2.0/24 | mascara 255.255.255.0
+[INFO] Gateway: 192.168.2.1  |  DHCP: disabled
+[OK] Interfaz 'gw_vlan200' creada con tag 200 y direccion 192.168.2.1/24.
+[INFO] DHCP deshabilitado para la VLAN 200.
+[INFO] Red VLAN 200 creada en server3.
+
+===== 3. Salida a internet (master) =====
+>>> [10.0.10.3] internet_to_network.sh 100 192.168.0.0/24
+[OK] MASQUERADE activo para 192.168.0.0/24 por 'ens3'.
+[OK] Reenvio autorizado entre 'gw_vlan100' y 'ens3'.
+[INFO] Salida a internet habilitada para la VLAN 100.
+
+>>> [10.0.10.3] internet_to_network.sh 200 192.168.2.0/24
+[OK] MASQUERADE activo para 192.168.2.0/24 por 'ens3'.
+[OK] Reenvio autorizado entre 'gw_vlan200' y 'ens3'.
+[INFO] Salida a internet habilitada para la VLAN 200.
+
+===== 4. Maquinas virtuales (server2) =====
+>>> [10.0.10.2] create_vm.sh vm100 br-int 100 1
+[INFO] Imagen base no encontrada. Descargando...
+[OK] Imagen base descargada: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
+[OK] Disco COW creado: /home/ubuntu/vm100_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
+[OK] Interfaz TAP 'vm100_tap' conectada a 'br-int' con tag 100.
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
+[OK] VM 'vm100' iniciada.
+[INFO] MAC: 20:22:02:29:64:01 | VNC: puerto 5901 | VLAN: 100
+
+>>> [10.0.10.2] create_vm.sh vm200 br-int 200 2
+[OK] Imagen base ya disponible: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
+[OK] Disco COW creado: /home/ubuntu/vm200_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
+[OK] Interfaz TAP 'vm200_tap' conectada a 'br-int' con tag 200.
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
+[OK] VM 'vm200' iniciada.
+[INFO] MAC: 20:22:02:29:c8:02 | VNC: puerto 5902 | VLAN: 200
+
+===== 5. Contenedores con direccionamiento estatico (server1) =====
+>>> [10.0.10.1] create_container_static.sh c100 br-int 100 192.168.0.11/24 192.168.0.1
+[OK] Contenedor 'c100' creado (sin red Docker).
+[OK] Par veth conectado: 'veth_c100' (tag 100).
+[OK] Contenedor 'c100': 192.168.0.11/24, gateway 192.168.0.1, VLAN 100.
+18: eth_c100@if19: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 6a:b0:d7:6c:a1:d4 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.0.11/24 scope global eth_c100
+       valid_lft forever preferred_lft forever
+    inet6 fe80::68b0:d7ff:fe6c:a1d4/64 scope link tentative 
+       valid_lft forever preferred_lft forever
+default via 192.168.0.1 dev eth_c100 
+192.168.0.0/24 dev eth_c100 proto kernel scope link src 192.168.0.11 
+
+>>> [10.0.10.1] create_container_static.sh c200 br-int 200 192.168.2.11/24 192.168.2.1
+[OK] Contenedor 'c200' creado (sin red Docker).
+[OK] Par veth conectado: 'veth_c200' (tag 200).
+[OK] Contenedor 'c200': 192.168.2.11/24, gateway 192.168.2.1, VLAN 200.
+20: eth_c200@if21: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 1a:c9:f2:4c:7a:a5 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.2.11/24 scope global eth_c200
+       valid_lft forever preferred_lft forever
+    inet6 fe80::18c9:f2ff:fe4c:7aa5/64 scope link tentative 
+       valid_lft forever preferred_lft forever
+default via 192.168.2.1 dev eth_c200 
+192.168.2.0/24 dev eth_c200 proto kernel scope link src 192.168.2.11 
+
+############ DESPLIEGUE COMPLETADO ############
+
+NOTA: las VMs requieren configuracion manual por VNC (puertos 5901 y 5902):
+  VLAN 100:  sudo ip addr add 192.168.0.10/24 dev eth0
+             sudo ip link set eth0 up
+             sudo ip route add default via 192.168.0.1
+  VLAN 200:  sudo ip addr add 192.168.2.10/24 dev eth0
+             sudo ip link set eth0 up
+             sudo ip route add default via 192.168.2.1

@@ -1,0 +1,51 @@
+############ LIMPIEZA DE LA ACTIVIDAD 2 ############
+
+===== 1. Contenedores (server1) =====
+>>> [10.0.10.1] delete_container.sh c100 br-int 100
+[OK] Contenedor 'c100' eliminado.
+[INFO] Contenedor 'c100' eliminado de server1.
+
+>>> [10.0.10.1] delete_container.sh c200 br-int 200
+[OK] Contenedor 'c200' eliminado.
+[INFO] Contenedor 'c200' eliminado de server1.
+
+===== 2. Maquinas virtuales (server2) =====
+>>> [10.0.10.2] delete_vm.sh vm100 br-int 100 1
+[OK] Proceso de la VM 'vm100' detenido.
+[OK] Interfaz TAP 'vm100_tap' eliminada.
+[OK] Disco '/home/ubuntu/vm100_img.qcow2' eliminado.
+[INFO] Imagen base conservada: 1 disco(s) aun la referencian.
+[INFO] VM 'vm100' eliminada de server2.
+
+>>> [10.0.10.2] delete_vm.sh vm200 br-int 200 2
+[OK] Proceso de la VM 'vm200' detenido.
+[OK] Interfaz TAP 'vm200_tap' eliminada.
+[OK] Disco '/home/ubuntu/vm200_img.qcow2' eliminado.
+[OK] Imagen base eliminada: no quedan discos que la referencien.
+[INFO] VM 'vm200' eliminada de server2.
+
+===== 3. Salida a internet (master) =====
+>>> [10.0.10.3] no_internet_to_network.sh 100 192.168.0.0/24
+[OK] MASQUERADE eliminado para 192.168.0.0/24.
+[OK] Reglas de reenvio hacia 'ens3' eliminadas para la VLAN 100.
+[INFO] Salida a internet deshabilitada para la VLAN 100.
+
+>>> [10.0.10.3] no_internet_to_network.sh 200 192.168.2.0/24
+[OK] MASQUERADE eliminado para 192.168.2.0/24.
+[OK] Reglas de reenvio hacia 'ens3' eliminadas para la VLAN 200.
+[INFO] Salida a internet deshabilitada para la VLAN 200.
+
+===== 4. Redes VLAN (master) =====
+>>> [10.0.10.3] delete_network_vlan.sh 100
+[INFO] No habia dnsmasq activo para la VLAN 100.
+[INFO] El namespace 'ns-dhcp-vlan100' no existia.
+[OK] Puerto 'gw_vlan100' retirado de 'br-int'.
+[INFO] Red VLAN 100 eliminada de server3.
+
+>>> [10.0.10.3] delete_network_vlan.sh 200
+[INFO] No habia dnsmasq activo para la VLAN 200.
+[INFO] El namespace 'ns-dhcp-vlan200' no existia.
+[OK] Puerto 'gw_vlan200' retirado de 'br-int'.
+[INFO] Red VLAN 200 eliminada de server3.
+
+############ LIMPIEZA COMPLETADA ############
