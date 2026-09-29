@@ -64,7 +64,9 @@ else
 fi
 
 sep "Aislamiento entre VLANs: c100 -> c200 (esperado: SIN respuesta)"
-if ssh ubuntu@$WORKER_CT 'sudo docker exec c100 ping -c2 -W2 192.168.2.11'; then
+CT200_IP=$(ssh ubuntu@$WORKER_CT "sudo docker exec c200 ip -4 addr show eth_c200 | awk '/inet /{print \$2}' | cut -d/ -f1")
+echo "Direccion de c200 obtenida por DHCP: $CT200_IP"
+if ssh ubuntu@$WORKER_CT "sudo docker exec c100 ping -c2 -W2 $CT200_IP"; then
     echo ">>> ATENCION: hubo respuesta, las redes NO estan aisladas"
 else
     echo ">>> CORRECTO: sin respuesta, aislamiento de capa 2 entre VLANs"

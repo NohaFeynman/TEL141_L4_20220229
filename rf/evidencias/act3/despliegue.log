@@ -23,6 +23,7 @@
 [INFO] VLAN 100 | red 192.168.0.0/24 | mascara 255.255.255.0
 [INFO] Gateway: 192.168.0.1  |  DHCP: enabled
 [OK] Interfaz 'gw_vlan100' creada con tag 100 y direccion 192.168.0.1/24.
+[OK] Instancia previa de dnsmasq para la VLAN 100 detenida.
 [OK] Namespace 'ns-dhcp-vlan100' disponible.
 [OK] Interfaz 'dhcp_vlan100' en 'ns-dhcp-vlan100' con direccion 192.168.0.2/24.
 [OK] dnsmasq activo en 'ns-dhcp-vlan100': rango 192.168.0.10-192.168.0.100, gateway 192.168.0.1.
@@ -32,6 +33,7 @@
 [INFO] VLAN 200 | red 192.168.2.0/24 | mascara 255.255.255.0
 [INFO] Gateway: 192.168.2.1  |  DHCP: enabled
 [OK] Interfaz 'gw_vlan200' creada con tag 200 y direccion 192.168.2.1/24.
+[OK] Instancia previa de dnsmasq para la VLAN 200 detenida.
 [OK] Namespace 'ns-dhcp-vlan200' disponible.
 [OK] Interfaz 'dhcp_vlan200' en 'ns-dhcp-vlan200' con direccion 192.168.2.2/24.
 [OK] dnsmasq activo en 'ns-dhcp-vlan200': rango 192.168.2.10-192.168.2.100, gateway 192.168.2.1.
@@ -50,50 +52,4 @@
 
 ===== 4. Maquinas virtuales (server2) =====
 >>> [10.0.10.2] create_vm.sh vm100 br-int 100 1
-[INFO] Imagen base no encontrada. Descargando...
-[OK] Imagen base descargada: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
-[OK] Disco COW creado: /home/ubuntu/vm100_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
-[OK] Interfaz TAP 'vm100_tap' conectada a 'br-int' con tag 100.
-qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
-[OK] VM 'vm100' iniciada.
-[INFO] MAC: 20:22:02:29:64:01 | VNC: puerto 5901 | VLAN: 100
-
->>> [10.0.10.2] create_vm.sh vm200 br-int 200 2
-[OK] Imagen base ya disponible: /home/ubuntu/cirros-0.5.1-x86_64-disk.img
-[OK] Disco COW creado: /home/ubuntu/vm200_img.qcow2 (backing file: /home/ubuntu/cirros-0.5.1-x86_64-disk.img)
-[OK] Interfaz TAP 'vm200_tap' conectada a 'br-int' con tag 200.
-qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]
-[OK] VM 'vm200' iniciada.
-[INFO] MAC: 20:22:02:29:c8:02 | VNC: puerto 5902 | VLAN: 200
-
-===== 5. Contenedores (server1) =====
->>> [10.0.10.1] create_container.sh c100 br-int 100
-[OK] Contenedor 'c100' creado (sin red Docker).
-[OK] Par veth conectado: 'veth_c100' (tag 100) <-> 'eth_c100' en el contenedor.
-udhcpc: lease of 192.168.0.77 obtained from 192.168.0.2, lease time 43200
-mv: can't rename '/etc/resolv.conf.15': Resource busy
-[OK] Contenedor 'c100' conectado a la VLAN 100.
-22: eth_c100@if23: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
-    link/ether 32:49:11:64:d7:e4 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.0.77/24 brd 192.168.0.255 scope global eth_c100
-       valid_lft forever preferred_lft forever
-    inet6 fe80::3049:11ff:fe64:d7e4/64 scope link 
-       valid_lft forever preferred_lft forever
-
->>> [10.0.10.1] create_container.sh c200 br-int 200
-[OK] Contenedor 'c200' creado (sin red Docker).
-[OK] Par veth conectado: 'veth_c200' (tag 200) <-> 'eth_c200' en el contenedor.
-udhcpc: lease of 192.168.2.69 obtained from 192.168.2.2, lease time 43200
-mv: can't rename '/etc/resolv.conf.15': Resource busy
-[OK] Contenedor 'c200' conectado a la VLAN 200.
-24: eth_c200@if25: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
-    link/ether 32:8c:36:e6:c0:c8 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.2.69/24 brd 192.168.2.255 scope global eth_c200
-       valid_lft forever preferred_lft forever
-    inet6 fe80::308c:36ff:fee6:c0c8/64 scope link 
-       valid_lft forever preferred_lft forever
-
-############ DESPLIEGUE COMPLETADO ############
-
-NOTA: las VMs obtienen direccionamiento por DHCP ejecutando 'udhcpc -i eth0'
-      desde la consola VNC (puertos 5901 y 5902).
+Error: la VM 'vm100' ya esta en ejecucion.
